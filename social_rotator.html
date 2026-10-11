@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SzponOS Social Rotator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#9FEA8A;--screen:#C9F7B8;--outline:#18361C}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;padding:0;margin:0;overflow:hidden;background:transparent}
+body{font-family:'Pixelify Sans',monospace}
+.stage{height:100%;width:100%;display:flex;align-items:center;justify-content:center;padding:6px}
+.bar{width:min(520px,100%);min-height:76px;display:flex;align-items:center;gap:16px;padding:11px 16px;border:3px solid var(--outline);border-radius:10px;background:linear-gradient(180deg,var(--screen),var(--brand));box-shadow:inset 0 0 0 2px #ffffff40;color:var(--outline);overflow:hidden}
+.platform{background:var(--outline);color:var(--screen);flex:0 0 52px;width:52px;height:52px;border-radius:5px;display:grid;place-items:center}
+.platform svg{width:35px;height:35px;display:block;fill:currentColor}
+.label{min-width:0;flex:1;font-size:31px;line-height:1.05;font-weight:700;overflow-wrap:anywhere}
+.content{display:flex;align-items:center;gap:16px;width:100%;transition:opacity .35s ease,transform .35s ease}
+.content.out{opacity:0;transform:translateY(-8px)}
+.content.in{opacity:1;transform:translateY(0)}
+@media(max-width:420px){.label{font-size:25px}.bar{gap:10px;padding:9px 11px}.platform{flex-basis:43px;width:43px;height:43px}.platform svg{width:30px;height:30px}.content{gap:10px}}
+</style>
+</head>
+<body>
+<div class="stage"><div class="bar"><div class="content in" id="content"><div class="platform" id="icon"></div><div class="label" id="label">StarySzponciTV</div></div></div></div>
+<script>
+// Czas wyświetlania jednej planszy (w milisekundach)
+const DISPLAY_MS = 10000;
+const TRANSITION_MS = 350;
+const ITEMS = [
+ {name:'StarySzponciTV', icon:'twitch'},
+ {name:'discord.gg/szpontownia', icon:'discord'}
+];
+const icons = {
+ twitch:`<svg viewBox="0 0 24 24" aria-label="Twitch"><path d="M4.265 3 3 6.236V19h4.5v2.5h2.5l2.5-2.5h3.5L21 14V3H4.265ZM19 13l-4 4h-4l-2.5 2.5V17H5V5h14v8Zm-3-5h-2v5h2V8Zm-5 0H9v5h2V8Z"/></svg>`,
+ discord:`<svg viewBox="0 0 24 24" aria-label="Discord"><path d="M19.73 5.05a18.5 18.5 0 0 0-4.57-1.42l-.56 1.15a16.8 16.8 0 0 0-5.2 0l-.56-1.15a18.5 18.5 0 0 0-4.57 1.42C1.38 9.28.6 13.4.99 17.46a18.7 18.7 0 0 0 5.61 2.83l1.2-1.96c-.66-.25-1.28-.56-1.87-.92l.46-.36c3.6 1.67 7.9 1.67 11.5 0l.46.36c-.59.36-1.21.67-1.87.92l1.2 1.96a18.7 18.7 0 0 0 5.61-2.83c.46-4.71-.79-8.79-3.56-12.41ZM8.4 15.18c-1.06 0-1.93-.97-1.93-2.16s.85-2.17 1.93-2.17c1.09 0 1.95.98 1.93 2.17 0 1.19-.85 2.16-1.93 2.16Zm7.2 0c-1.06 0-1.93-.97-1.93-2.16s.85-2.17 1.93-2.17c1.09 0 1.95.98 1.93 2.17 0 1.19-.85 2.16-1.93 2.16Z"/></svg>`
+};
+let index=0;
+const content=document.getElementById('content');
+const icon=document.getElementById('icon');
+const label=document.getElementById('label');
+function show(i){icon.innerHTML=icons[ITEMS[i].icon];label.textContent=ITEMS[i].name}
+show(0);
+setInterval(()=>{
+ content.classList.remove('in'); content.classList.add('out');
+ setTimeout(()=>{index=(index+1)%ITEMS.length;show(index);content.classList.remove('out');content.classList.add('in')},TRANSITION_MS);
+},DISPLAY_MS);
+</script>
+</body>
+</html>
