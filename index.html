@@ -1,57 +1,84 @@
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SzponOS - Twitch Chat TikTok v3</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SzponOS Twitch Chat v4</title>
 
 <style>
+@font-face {
+  font-family: "Nokja";
+  src: url("./NokjaOriginalSmallBold.woff2") format("woff2");
+  font-display: swap;
+}
+
 :root {
   --brand: #9FEA8A;
   --screen: #C9F7B8;
-  --outline: #18361C;
   --dark: #4D8F43;
+  --outline: #18361C;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 html, body {
   margin: 0;
+  padding: 0;
   width: 100%;
   height: 100%;
   background: transparent;
   overflow: hidden;
-  font-family: Verdana, Tahoma, sans-serif;
 }
 
+body {
+  font-family: "Nokja", monospace;
+}
+
+/* GŁÓWNY KONTENER */
 .stage {
   width: 100%;
   height: 100%;
-  padding: 5px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  padding: 6px;
 }
 
+/* RAMKA LCD */
 .bar {
   width: 100%;
-  height: calc(100% - 2px);
+  max-width: 760px;
   min-height: 95px;
-  max-height: 140px;
+  padding: 14px 18px;
+
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
-  padding: 9px 16px;
-  background: linear-gradient(180deg, var(--screen), var(--brand));
+
+  background: linear-gradient(
+    180deg,
+    var(--screen),
+    var(--brand)
+  );
+
   border: 3px solid var(--outline);
   border-radius: 10px;
+
+  box-shadow:
+    inset 0 0 0 2px #ffffff40,
+    0 4px 10px #18361c30;
+
   color: var(--outline);
-  box-shadow: inset 0 0 0 2px #ffffff45;
-  position: relative;
+
   opacity: 0;
   transform: translateY(8px);
-  transition: opacity .28s, transform .28s;
-  overflow: hidden;
+
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
 }
 
 .bar.show {
@@ -59,71 +86,43 @@ html, body {
   transform: translateY(0);
 }
 
-.bar:after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0 3px,
-    #18361c0a 3px 4px
-  );
-  pointer-events: none;
-}
-
+/* OZNACZENIE TWITCH */
 .platform {
-  flex: none;
+  flex-shrink: 0;
   background: var(--outline);
   color: var(--screen);
-  border-radius: 4px;
   padding: 8px;
-  font-size: 20px;
-  font-weight: 900;
+  border-radius: 4px;
+  font-size: 22px;
+  line-height: 1.1;
 }
 
+/* WIADOMOŚĆ */
 .content {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  justify-content: center;
 }
 
-.name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 24px;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.viewport {
-  width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  position: relative;
+.username {
+  font-size: 25px;
+  line-height: 1.25;
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
 }
 
 .message {
-  display: inline-block;
-  position: relative;
-  white-space: nowrap;
-  font-size: 26px;
+  font-size: 24px;
   line-height: 1.3;
-  font-weight: 600;
-  transform: translateX(0);
-}
 
-.message.scroll {
-  animation: marquee var(--scroll-time, 7s) linear 1.1s both;
-}
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
 
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(calc(-1 * var(--overflow, 0px))); }
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
 }
 </style>
 </head>
@@ -131,72 +130,75 @@ html, body {
 <body>
 <div class="stage">
   <div class="bar" id="bar">
-
     <div class="platform">TTV</div>
 
     <div class="content">
-      <div class="name" id="name"></div>
-
-      <div class="viewport" id="viewport">
-        <span class="message" id="message"></span>
-      </div>
+      <div class="username" id="username"></div>
+      <div class="message" id="message"></div>
     </div>
-
   </div>
 </div>
 
 <script>
-// SZPONOS CHAT V3 — TWITCH NA TIKTOK
+// ==========================
+// KONFIGURACJA
+// ==========================
 
-const CHANNEL = 'staryszponcitv';
+const CHANNEL = "staryszponcitv";
 
-const BASE_DISPLAY_MS = 7000;
+const BASE_TIME = 7000;
 const MAX_LENGTH = 450;
 
-// Mniejsza wartość = wolniejsze przewijanie
-const SCROLL_PX_PER_SECOND = 55;
-
 const BLOCKED = [
-  'nightbot',
-  'streamelements',
-  'moobot',
-  'soundalerts'
+  "nightbot",
+  "streamelements",
+  "moobot",
+  "soundalerts"
 ];
 
-const bar = document.getElementById('bar');
-const nameEl = document.getElementById('name');
-const messageEl = document.getElementById('message');
-const viewport = document.getElementById('viewport');
+// ==========================
+// ELEMENTY
+// ==========================
 
-const demo = new URLSearchParams(location.search).has('demo');
+const bar = document.getElementById("bar");
+const username = document.getElementById("username");
+const message = document.getElementById("message");
+
+const demo = new URLSearchParams(location.search).has("demo");
 
 let queue = [];
 let busy = false;
-let ws = null;
+let socket = null;
 let retry = 0;
 
-function enqueue(name, message) {
-  if (
-    !name ||
-    !message ||
-    BLOCKED.includes(name.toLowerCase()) ||
-    message.startsWith('!')
-  ) return;
+// ==========================
+// KOLEJKA WIADOMOŚCI
+// ==========================
+
+function enqueue(name, text) {
+  if (!name || !text) return;
+
+  if (BLOCKED.includes(name.toLowerCase())) return;
+  if (text.startsWith("!")) return;
 
   queue.push({
-    name,
-    message: message.replace(/\s+/g, ' ').slice(0, MAX_LENGTH)
+    name: name,
+    text: text.replace(/\s+/g, " ").slice(0, MAX_LENGTH)
   });
 
   if (queue.length > 15) {
-    queue.splice(0, queue.length - 15);
+    queue.shift();
   }
 
-  if (!busy) next();
+  if (!busy) showNext();
 }
 
-function next() {
-  if (!queue.length) {
+// ==========================
+// WYŚWIETLANIE
+// ==========================
+
+function showNext() {
+  if (queue.length === 0) {
     busy = false;
     return;
   }
@@ -205,111 +207,129 @@ function next() {
 
   const item = queue.shift();
 
-  nameEl.textContent = item.name;
+  username.textContent = item.name;
+  message.textContent = item.text;
 
-  messageEl.classList.remove('scroll');
-  messageEl.style.removeProperty('--scroll-time');
-  messageEl.style.removeProperty('--overflow');
-  messageEl.style.transform = 'translateX(0)';
-  messageEl.textContent = item.message;
+  // Dłuższe wiadomości zostają dłużej
+  const extraTime = Math.max(
+    0,
+    (item.text.length - 65) * 65
+  );
 
-  bar.classList.add('show');
+  const displayTime = Math.min(
+    30000,
+    BASE_TIME + extraTime
+  );
 
-  requestAnimationFrame(() => requestAnimationFrame(() => {
+  bar.classList.add("show");
 
-    const overflow = Math.max(
-      0,
-      Math.ceil(messageEl.scrollWidth - viewport.clientWidth)
-    );
+  setTimeout(() => {
+    bar.classList.remove("show");
 
-    let duration = BASE_DISPLAY_MS;
-
-    if (overflow > 3) {
-      const scrollTime = Math.max(
-        4,
-        overflow / SCROLL_PX_PER_SECOND
-      );
-
-      duration = Math.ceil((scrollTime + 2.5) * 1000);
-
-      messageEl.style.setProperty('--overflow', overflow + 'px');
-      messageEl.style.setProperty('--scroll-time', scrollTime + 's');
-      messageEl.classList.add('scroll');
-    }
-
-    setTimeout(() => {
-      bar.classList.remove('show');
-      setTimeout(next, 360);
-    }, duration);
-
-  }));
+    setTimeout(showNext, 350);
+  }, displayTime);
 }
 
-function parse(line) {
-  const i = line.indexOf(' PRIVMSG #');
-  if (i < 0) return;
+// ==========================
+// TWITCH IRC
+// ==========================
 
-  const trailing = line.indexOf(' :', i);
-  if (trailing < 0) return;
+function parseMessage(line) {
+  const match = line.match(
+    /^(?:@([^ ]+) )?:([^! ]+)![^ ]+ PRIVMSG #[^ ]+ :(.+)$/
+  );
 
-  const user =
-    (line.match(/display-name=([^;\s]*)/) || [])[1] ||
-    (line.match(/:([^! ]+)!/) || [])[1] ||
-    '';
+  if (!match) return null;
 
-  return {
-    name: user,
-    message: line.slice(trailing + 2)
-  };
+  const tags = match[1] || "";
+  const fallbackName = match[2];
+  const text = match[3];
+
+  const displayTag = tags.match(
+    /(?:^|;)display-name=([^;]*)/
+  );
+
+  const name = displayTag && displayTag[1]
+    ? displayTag[1]
+    : fallbackName;
+
+  return { name, text };
 }
 
 function connect() {
-  ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+  socket = new WebSocket(
+    "wss://irc-ws.chat.twitch.tv:443"
+  );
 
-  ws.onopen = () => {
+  socket.onopen = () => {
     retry = 0;
 
-    ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
-    ws.send('PASS SCHMOOPIIE');
-    ws.send('NICK justinfan' + Math.floor(Math.random() * 999999));
-    ws.send('JOIN #' + CHANNEL);
+    socket.send(
+      "CAP REQ :twitch.tv/tags twitch.tv/commands"
+    );
+
+    socket.send("PASS SCHMOOPIIE");
+
+    socket.send(
+      "NICK justinfan" +
+      Math.floor(Math.random() * 999999)
+    );
+
+    socket.send("JOIN #" + CHANNEL);
   };
 
-  ws.onmessage = e => {
-    for (const line of e.data.split('\r\n')) {
+  socket.onmessage = event => {
+    const lines = event.data.split("\r\n");
 
-      if (line.startsWith('PING')) {
-        ws.send('PONG :tmi.twitch.tv');
+    for (const line of lines) {
+      if (line.startsWith("PING")) {
+        socket.send("PONG :tmi.twitch.tv");
         continue;
       }
 
-      const msg = parse(line);
+      const data = parseMessage(line);
 
-      if (msg) enqueue(msg.name, msg.message);
+      if (data) {
+        enqueue(data.name, data.text);
+      }
     }
   };
 
-  ws.onclose = () => {
-    setTimeout(
-      connect,
-      Math.min(30000, 3000 * 2 ** Math.min(retry++, 4))
+  socket.onclose = () => {
+    const wait = Math.min(
+      30000,
+      3000 * Math.pow(2, Math.min(retry++, 4))
     );
+
+    setTimeout(connect, wait);
   };
 
-  ws.onerror = () => ws.close();
+  socket.onerror = () => {
+    socket.close();
+  };
 }
 
-// TRYB TESTOWY
+// ==========================
+// TRYB DEMONSTRACYJNY
+// ==========================
+
 if (demo) {
-  enqueue('Raptus', 'Siema TikTok! Lecimy na Arenę?');
+  const samples = [
+    ["Raptus", "Siema TikTok!"],
+    ["Szponciak", "To jest nieco dłuższa wiadomość, która automatycznie przejdzie do następnego wiersza, gdy zabraknie miejsca na ekranie."],
+    ["Hubert", "Pozdrawiam wszystkich widzów na TikToku! Pamiętajcie, że mamy również aktywnego Discorda i wspólne granie z widzami."]
+  ];
 
-  setInterval(() => {
-    enqueue(
-      'Szponciak',
-      'Pozdrawiam drugą platformę! A to jest specjalna bardzo długa wiadomość testowa, która powinna się płynnie przewinąć na drugiej linii i dać widzowi czas na przeczytanie całego tekstu.'
-    );
-  }, 22000);
+  let index = 0;
 
+  function addDemo() {
+    const sample = samples[index % samples.length];
+    enqueue(sample[0], sample[1]);
+    index++;
+  }
+
+  addDemo();
+  setInterval(addDemo, 10000);
 } else {
   connect();
 }
