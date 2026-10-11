@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SzponOS — rotator interakcji</title>
+<title>SzponOS — rotator interakcji v2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@600;700&display=swap" rel="stylesheet">
@@ -13,10 +13,11 @@
 html,body {width:100%;height:100%;margin:0;background:transparent;overflow:hidden}
 body {font-family:'Pixelify Sans',Tahoma,sans-serif}
 .stage {width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:4px}
-.bar {width:100%;height:64px;display:flex;align-items:center;gap:10px;padding:7px 12px;background:linear-gradient(180deg,var(--screen),var(--brand));border:3px solid var(--outline);border-radius:9px;color:var(--outline);box-shadow:inset 0 0 0 2px #ffffff55,0 3px 8px #18361c25;overflow:hidden}
+.bar {width:100%;max-width:520px;height:76px;display:flex;align-items:center;gap:10px;padding:7px 12px;background:linear-gradient(180deg,var(--screen),var(--brand));border:3px solid var(--outline);border-radius:9px;color:var(--outline);box-shadow:inset 0 0 0 2px #ffffff55,0 3px 8px #18361c25;overflow:hidden}
 .symbol {width:41px;height:41px;flex-shrink:0;display:grid;place-items:center;background:var(--outline);color:var(--screen);border-radius:5px}
 .symbol svg {width:27px;height:27px;stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.copy {flex:1;min-width:0;font-size:25px;font-weight:700;white-space:nowrap;line-height:1.05;letter-spacing:.1px}
+.copy {flex:1;min-width:0;font-size:25px;font-weight:700;white-space:normal;overflow-wrap:normal;line-height:1.05;letter-spacing:.1px}
+.copy.long {font-size:22px}
 .slide {display:flex;align-items:center;gap:10px;width:100%;min-width:0;transition:opacity .32s ease,transform .32s ease;opacity:1;transform:translateY(0)}
 .slide.out {opacity:0;transform:translateY(-8px)}
 .slide.in {opacity:0;transform:translateY(8px)}
@@ -42,13 +43,13 @@ const entries = [
   {icon:'heart',text:'DOŁĄCZ DO FANKLUBU'},
   {icon:'bell',text:'WŁĄCZ POWIADOMIENIA LIVE'},
   {icon:'trophy',text:'EVENTY CO TYDZIEŃ'},
-  {icon:'propeller',text:'GIFT = KRĘCĘ ŚMIGŁEM'}
+  {icon:'propeller',text:'GIFT / SUB = KRĘCĘ ŚMIGŁEM',long:true}
 ];
 const slide = document.getElementById('slide');
 const symbol = document.getElementById('symbol');
 const copy = document.getElementById('copy');
 let index=0;
-function render(){symbol.innerHTML=icons[entries[index].icon];copy.textContent=entries[index].text;}
+function render(){const item=entries[index];symbol.innerHTML=icons[item.icon];copy.textContent=item.text;copy.classList.toggle('long',!!item.long);}
 function change(){
   slide.classList.add('out');
   setTimeout(()=>{
