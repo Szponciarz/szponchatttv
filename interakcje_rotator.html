@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SzponOS — rotator interakcji</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root { --brand:#9FEA8A; --screen:#C9F7B8; --outline:#18361C; --dark:#4D8F43; }
+* {box-sizing:border-box}
+html,body {width:100%;height:100%;margin:0;background:transparent;overflow:hidden}
+body {font-family:'Pixelify Sans',Tahoma,sans-serif}
+.stage {width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:4px}
+.bar {width:100%;height:64px;display:flex;align-items:center;gap:10px;padding:7px 12px;background:linear-gradient(180deg,var(--screen),var(--brand));border:3px solid var(--outline);border-radius:9px;color:var(--outline);box-shadow:inset 0 0 0 2px #ffffff55,0 3px 8px #18361c25;overflow:hidden}
+.symbol {width:41px;height:41px;flex-shrink:0;display:grid;place-items:center;background:var(--outline);color:var(--screen);border-radius:5px}
+.symbol svg {width:27px;height:27px;stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.copy {flex:1;min-width:0;font-size:25px;font-weight:700;white-space:nowrap;line-height:1.05;letter-spacing:.1px}
+.slide {display:flex;align-items:center;gap:10px;width:100%;min-width:0;transition:opacity .32s ease,transform .32s ease;opacity:1;transform:translateY(0)}
+.slide.out {opacity:0;transform:translateY(-8px)}
+.slide.in {opacity:0;transform:translateY(8px)}
+@media(max-width:450px){.copy{font-size:21px}.bar{padding:6px 8px}.symbol{width:36px;height:36px}}
+@media(prefers-reduced-motion:reduce){.slide{transition:none}}
+</style>
+</head>
+<body>
+<div class="stage"><div class="bar"><div class="slide" id="slide"><div class="symbol" id="symbol" aria-hidden="true"></div><div class="copy" id="copy"></div></div></div></div>
+<script>
+// Zmień tę liczbę, żeby ustawić czas wyświetlania każdego komunikatu.
+const DISPLAY_MS = 30000;
+const TRANSITION_MS = 320;
+const icons = {
+  zap:'<svg viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-12h-7z"/></svg>',
+  heart:'<svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg>',
+  bell:'<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg>',
+  trophy:'<svg viewBox="0 0 24 24"><path d="M7 3h10v8a5 5 0 0 1-10 0V3Zm0 2H3v3a5 5 0 0 0 5 5m9-8h4v3a5 5 0 0 1-5 5M12 16v4m-5 1h10"/></svg>',
+  propeller:'<svg viewBox="0 0 24 24"><path d="M12 12V5M4 12h16M12 12l-5 7m5-7 5 7"/><circle cx="12" cy="12" r="2"/><path d="M9 4c0-2 6-2 6 0v2H9z"/></svg>'
+};
+const entries = [
+  {icon:'zap',text:'OBS = JUMPSCARE'},
+  {icon:'heart',text:'DOŁĄCZ DO FANKLUBU'},
+  {icon:'bell',text:'WŁĄCZ POWIADOMIENIA LIVE'},
+  {icon:'trophy',text:'EVENTY CO TYDZIEŃ'},
+  {icon:'propeller',text:'GIFT = KRĘCĘ ŚMIGŁEM'}
+];
+const slide = document.getElementById('slide');
+const symbol = document.getElementById('symbol');
+const copy = document.getElementById('copy');
+let index=0;
+function render(){symbol.innerHTML=icons[entries[index].icon];copy.textContent=entries[index].text;}
+function change(){
+  slide.classList.add('out');
+  setTimeout(()=>{
+    index=(index+1)%entries.length;
+    render();
+    slide.classList.remove('out');
+    slide.classList.add('in');
+    requestAnimationFrame(()=>requestAnimationFrame(()=>slide.classList.remove('in')));
+  },TRANSITION_MS);
+}
+render();
+setInterval(change, DISPLAY_MS);
+</script>
+</body>
+</html>
