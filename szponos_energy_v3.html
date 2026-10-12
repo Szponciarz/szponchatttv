@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SzponOS Energy — TikFinity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+@font-face{font-family:'Nokja';src:url('./NokjaOriginalSmallBold.woff2') format('woff2');font-display:swap}
+:root{--lcd:#c9f7b8;--ink:#18361c;--mid:#4d8f43;--brand:#9fea8a}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:'Pixelify Sans',monospace}
+#panel{width:100%;height:100%;min-height:92px;padding:9px 12px;background:transparent;color:var(--ink);border:0;border-radius:0;display:flex;flex-direction:column;justify-content:center;gap:6px;box-shadow:none;position:relative;overflow:hidden}
+header,.status,.meterline{display:flex;align-items:center;justify-content:space-between;gap:8px}
+header{font-size:clamp(11px,3vw,18px);font-weight:900;letter-spacing:.06em;line-height:1}
+.status{font-size:clamp(9px,2.3vw,12px);font-weight:800;white-space:nowrap}
+#conn{display:flex;gap:4px;align-items:center;max-width:75%;overflow:hidden;text-overflow:ellipsis}
+.dot{width:7px;height:7px;flex:none;border-radius:50%;background:#777}
+.dot.online{background:var(--ink);box-shadow:0 0 0 2px var(--brand)}
+.battery{width:100%;display:flex;align-items:center;gap:0;height:clamp(32px,12vh,60px)}
+.shell{border:3px solid var(--ink);border-radius:5px;flex:1;height:100%;padding:4px;background:var(--lcd);display:grid;grid-template-columns:repeat(10,1fr);gap:3px;position:relative}
+.segment{background:rgba(24,54,28,.09);border-radius:1px;transition:background .25s ease}
+.segment.on{background:var(--mid);box-shadow:inset -2px 0 rgba(24,54,28,.22)}
+.nub{width:8px;height:43%;border:3px solid var(--ink);border-left:0;border-radius:0 3px 3px 0;background:var(--mid)}
+#percent{font-weight:900;font-size:clamp(17px,5.5vw,29px);line-height:1;min-width:67px;text-align:right}
+#details{font-size:clamp(9px,2.5vw,13px);font-weight:900;display:flex;justify-content:space-between;gap:8px;white-space:nowrap}
+#overlay{position:absolute;inset:0;background:transparent;z-index:3;display:none;justify-content:center;align-items:center;flex-direction:column;text-align:center;padding:8px;border-radius:9px}
+#overlay.show{display:flex;animation:blink .25s 5 alternate;text-shadow:0 1px 1px rgba(201,247,184,.8)}
+#rewardTitle{font-size:clamp(16px,6vw,30px);font-weight:900}
+#rewardSub{font-size:clamp(10px,3vw,15px);font-weight:900;margin-top:5px}
+header,.status,#details,#percent{background:transparent} 
+@keyframes blink{from{filter:brightness(1)}to{filter:brightness(.79)}}
+@media (max-height:115px){#panel{gap:3px;padding:5px 10px}.battery{height:35px}}
+</style>
+</head>
+<body>
+<div id="panel" role="status" aria-live="polite">
+<header><span>▣ SZPONOS ENERGY</span><span id="level">LVL 01</span></header>
+<div class="meterline"><div class="battery"><div class="shell" id="segments"></div><div class="nub"></div></div><span id="percent">0%</span></div>
+<div id="details"><span>♥ 10=1 · ↗=10 · +FOLLOW=15</span><span id="points">0 / 300</span></div>
+<div class="status"><span id="conn"><span id="dot" class="dot"></span><span id="connectionText">ŁĄCZENIE Z TIKFINITY...</span></span><span id="recent">CZEKA NA AKCJĘ</span></div>
+<div id="overlay"><div id="rewardTitle">⚡ BATERIA PEŁNA!</div><div id="rewardSub">SZPONCIO ODBLOKOWUJE NAGRODĘ!</div></div>
+</div>
+<script>
+'use strict';
+// CONFIG — zmień tutaj wartości, jeśli chcesz inną trudność.
+const SETTINGS = {
+  wsUrl: 'ws://127.0.0.1:21213/',
+  pointsPerTenLikes: 1,
+  pointsPerShare: 10,
+  pointsPerFollow: 15,
+  goal: 300,
+  rewardDurationMs: 6500,
+  resetOnPageLoad: false, // true = każdy reload OBS rozpoczyna od 0
+  storageKey: 'szponos-energy-v1'
+};
+const params = new URLSearchParams(location.search);
+const demo = params.get('demo') === '1';
+const $ = id => document.getElementById(id);
+const cells = [];
+for(let i=0;i<10;i++){let s=document.createElement('span');s.className='segment';$('segments').appendChild(s);cells.push(s)}
+let saved={};
+try {saved=JSON.parse(localStorage.getItem(SETTINGS.storageKey)||'{}')||{}}catch(e){}
+let points=SETTINGS.resetOnPageLoad?0:Math.max(0,Number(saved.points)||0);
+let level=SETTINGS.resetOnPageLoad?1:Math.max(1,Number(saved.level)||1);
+let likeRemainder=SETTINGS.resetOnPageLoad?0:Math.max(0,Number(saved.likeRemainder)||0);
+let celebrating=false;
+let pending=[];
+let socket;
+function persist(){try{localStorage.setItem(SETTINGS.storageKey,JSON.stringify({points,level,likeRemainder}))}catch(e){}}
+function render(){const percent=Math.min(100,Math.floor(100*points/SETTINGS.goal)); $('percent').textContent=percent+'%';$('points').textContent=points+' / '+SETTINGS.goal;$('level').textContent='LVL '+String(level).padStart(2,'0');cells.forEach((c,i)=>c.classList.toggle('on',i<Math.ceil(percent/10)))}
+function recent(msg){$('recent').textContent=msg}
+function connectStatus(msg,ok){$('connectionText').textContent=msg;$('dot').classList.toggle('online',!!ok)}
+function award(amount,msg){amount=Math.max(0,Math.floor(Number(amount)||0));if(!amount)return;pending.push({amount,msg});processQueue()}
+function processQueue(){if(celebrating || !pending.length)return;const {amount,msg}=pending.shift();points+=amount;recent(msg+' +'+amount);persist();render();if(points>=SETTINGS.goal){celebrating=true;points=SETTINGS.goal;persist();render();$('overlay').classList.add('show');setTimeout(()=>{level++;points=0;$('overlay').classList.remove('show');celebrating=false;persist();render();processQueue()},SETTINGS.rewardDurationMs)}else{processQueue()}}
+function onLike(data){
+  // TikFinity likeCount oznacza liczbę lajków przypisanych do zdarzenia.
+  const count=Number(data.likeCount??data.likecount??1);
+  if(!Number.isFinite(count)||count<=0)return;
+  likeRemainder+=count;
+  const chunks=Math.floor(likeRemainder/10);
+  likeRemainder%=10;
+  persist();
+  award(chunks*SETTINGS.pointsPerTenLikes,'♥ LAJKI');
+}
+// Krótka ochrona przed powtórzoną identyczną wiadomością przy retransmisji (nie blokuje kolejnych prawdziwych share/follow).
+const recentEvents=new Map();
+function duplicate(type,data){
+ const id=data.msgId??data.messageId??data.eventId??null;
+ if(id==null)return false;
+ const key=type+':'+String(id),now=Date.now();
+ for(const [k,t] of recentEvents)if(now-t>30000)recentEvents.delete(k);
+ if(recentEvents.has(key))return true;
+ recentEvents.set(key,now);return false;
+}
+function handle(raw){let msg;try{msg=JSON.parse(raw)}catch(e){return}const type=String(msg.event||'').toLowerCase();const data=msg.data||{};
+ if(duplicate(type,data))return;
+ if(type==='like')onLike(data);
+ else if(type==='share')award(SETTINGS.pointsPerShare,'↗ SHARE');
+ else if(type==='follow')award(SETTINGS.pointsPerFollow,'+ FOLLOW');
+}
+function start(){if(demo){connectStatus('TRYB DEMO (KLAWISZE 1 / 2 / 3)',true);return}
+  try{socket=new WebSocket(SETTINGS.wsUrl)}catch(e){connectStatus('BŁĄD WEBSOCKET',false);setTimeout(start,5000);return}
+  socket.onopen=()=>connectStatus('TIKFINITY POŁĄCZONY',true);
+  socket.onmessage=e=>handle(e.data);
+  socket.onerror=()=>connectStatus('BRAK POŁĄCZENIA',false);
+  socket.onclose=()=>{connectStatus('TIKFINITY OFFLINE — PONAWIAM',false);setTimeout(start,4000)};
+}
+// Podgląd offline: dopisz ?demo=1 do adresu pliku; klawisze 1=10 lajków, 2=share, 3=follow, 0=reset.
+if(demo){window.addEventListener('keydown',e=>{
+ if(e.key==='1')onLike({likeCount:10});
+ if(e.key==='2')award(SETTINGS.pointsPerShare,'↗ SHARE');
+ if(e.key==='3')award(SETTINGS.pointsPerFollow,'+ FOLLOW');
+ if(e.key==='0'){points=0;level=1;likeRemainder=0;pending=[];celebrating=false;$('overlay').classList.remove('show');persist();render();recent('RESET')}
+})}
+render();start();
+</script>
+</body>
+</html>
